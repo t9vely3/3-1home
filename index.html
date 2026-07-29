@@ -39,6 +39,7 @@ body[data-digit="sans"]{--mono:var(--sans)}
 /* 글자 크기 */
 body[data-scale="sm"]{zoom:.94} body[data-scale="lg"]{zoom:1.07}
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 html,body{height:100%}
 body{
   margin:0; background:var(--paper); color:var(--tx);
@@ -293,6 +294,8 @@ table.t td.calc{font-family:var(--mono);font-variant-numeric:tabular-nums;text-a
   border-radius:99px;background:rgba(255,255,255,.08);color:rgba(255,255,255,.6);white-space:nowrap}
 .syncb i{width:6px;height:6px;border-radius:50%;background:#8A9099;display:block;flex:0 0 auto}
 .syncb.ok i{background:#4FBF9A} .syncb.err i{background:#D98A7C} .syncb.wait i{background:#D6B26A}
+.syncb.local{background:rgba(214,178,106,.14);color:#D6B26A} .syncb.local i{background:#D6B26A}
+.syncb.signin{background:rgba(217,138,124,.16);color:#E0A79C} .syncb.signin i{background:#D98A7C}
 .subtle{color:var(--tx-3);font-size:12px}
 /* modal */
 .ovl{position:fixed;inset:0;background:rgba(21,24,29,.42);backdrop-filter:blur(3px);z-index:80;
@@ -374,6 +377,9 @@ table.t td.calc{font-family:var(--mono);font-variant-numeric:tabular-nums;text-a
       <div class="sp"></div>
       <div class="row" id="topExtra"></div>
     </header>
+    <div id="cfgBanner" hidden style="padding:12px 24px 0">
+      <div class="warnbox" id="cfgBannerTx"></div>
+    </div>
 
     <!-- ══════════ 대시보드 ══════════ -->
     <section class="view on" id="v-dash">
@@ -723,12 +729,12 @@ table.t td.calc{font-family:var(--mono);font-variant-numeric:tabular-nums;text-a
       값을 채우면 자동으로 클라우드 모드로 켜집니다. 비워두면 로컬 모드로 동작합니다.
    ════════════════════════════════════════════════════════════════ */
 const FIREBASE_CONFIG={
-  apiKey:            "",   // 예) AIzaSy...
-  authDomain:        "",   // 예) cash-eabc1.firebaseapp.com
-  projectId:         "",   // 예) cash-eabc1
-  storageBucket:     "",
-  messagingSenderId: "",
-  appId:             ""
+  apiKey:            "AIzaSyCJ-VTabucn0OAyPmByzZAJa8y1VJdUgss",
+  authDomain:        "home-a4d02.firebaseapp.com",
+  projectId:         "home-a4d02",
+  storageBucket:     "home-a4d02.firebasestorage.app",
+  messagingSenderId: "333497794164",
+  appId:             "1:333497794164:web:abf4791df6ef08a44a5b21"
 };
 const ROOT="team31";       // Firestore 최상위 컬렉션명 (다른 도구와 섞이지 않게 분리)
 /* 데이터베이스 ID — 콘솔에서 「(default)」로 만들었으면 그대로 비워둔다.
@@ -856,9 +862,21 @@ const cfgJson=()=>JSON.stringify([S.mentors,S.roles,S.biz]);
 
 function setSync(st){
   const b=$("#syncBadge"), t=$("#syncTx"); if(!b) return;
-  b.className="syncb"+(st==="ok"?" ok":st==="err"?" err":st==="wait"?" wait":"");
-  t.textContent={ok:"동기화됨",wait:"동기화 중",err:"연결 오류",signin:"로그인 필요",local:"로컬 저장"}[st]||st;
+  b.className="syncb "+st;
+  t.textContent={ok:"동기화됨",wait:"동기화 중",err:"연결 오류",signin:"로그인 필요",local:"로컬 저장 · 미연결"}[st]||st;
   const out=$("#btnOut"); if(out) out.hidden=!(Cloud.on&&Cloud.user);
+  const bn=$("#cfgBanner"), bt=$("#cfgBannerTx");
+  if(bn&&bt){
+    let m="";
+    if(!Cloud.configured())
+      m="로컬 모드입니다 — 이 브라우저에만 저장되고 팀 공유·로그인이 동작하지 않습니다. "
+       +"index.html 최상단 FIREBASE_CONFIG 의 apiKey 와 projectId 를 채우면 클라우드 모드로 켜집니다.";
+    else if(st==="err")
+      m="클라우드에 연결하지 못했습니다 — Firestore 보안 규칙 게시, 승인된 도메인(github.io) 등록, 데이터베이스 ID 를 확인하세요.";
+    else if(st==="signin")
+      m="로그인이 필요합니다. 로그인하지 않고 입력한 내용은 이 기기에만 남습니다.";
+    bt.textContent=m; bn.hidden=!m;
+  }
 }
 let renderT=null;
 function softRender(){
@@ -1660,7 +1678,7 @@ async function boot(keep){
   syncMentorSelects(); loadForm(); renderDash(); renderSet();
   if(!keep){
     if(Cloud.configured()){ await Cloud.boot(); }
-    else{ setSync("local"); $("#lgMode").textContent="local mode"; }
+    else{ setSync("local"); $("#lgMode").textContent="local mode"; $("#lgHint").textContent="Firebase 설정 전"; }
   }
 }
 boot();
