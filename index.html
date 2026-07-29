@@ -283,6 +283,8 @@ input.ci::-webkit-outer-spin-button,input.ci::-webkit-inner-spin-button{-webkit-
 input.ci:hover{border-color:var(--line);background:var(--card-2)}
 input.ci:focus{outline:none;border-color:var(--ink-3);background:var(--card);box-shadow:0 0 0 3px rgba(30,35,42,.08)}
 table.t td.cell-in{padding:0 4px}
+table.t td.acts{white-space:nowrap;padding:0 8px}
+table.t td.acts .ib{vertical-align:middle}
 table.t tr.dirty td.dt{box-shadow:inset 3px 0 0 var(--brass)}
 table.t tr.off td{color:var(--tx-3)}
 table.t tr.dirty td{color:var(--tx)}
@@ -471,10 +473,10 @@ table.t td.calc{font-family:var(--mono);font-variant-numeric:tabular-nums;text-a
               <div class="fg">
                 <div class="fld"><label for="wReg">등록</label><input type="number" min="0" id="wReg" class="f n" value="0"></div>
                 <div class="fld"><label for="wCod">COD</label><input type="number" min="0" id="wCod" class="f n" value="0"></div>
-                <div class="fld"><label for="wRev">금일매출</label><input type="number" min="0" step="1000" id="wRev" class="f n" value="0"><span class="hint" id="wRevH">0 원</span></div>
-                <div class="fld"><label for="wRefund">환불 <span class="subtle">선택</span></label><input type="number" min="0" step="1000" id="wRefund" class="f n" value="0"></div>
-                <div class="fld"><label for="wNext">익일예정 매출</label><input type="number" min="0" step="1000" id="wNext" class="f n" value="0"><span class="hint" id="wNextH">0 원</span></div>
-                <div class="fld"><label for="wGoal">익일 목표</label><input type="number" min="0" step="1000" id="wGoal" class="f n" value="0"><span class="hint" id="wGoalH">0 원</span></div>
+                <div class="fld"><label for="wRev">금일매출</label><input type="text" inputmode="numeric" id="wRev" class="f n money" value="0"><span class="hint" id="wRevH">0 원</span></div>
+                <div class="fld"><label for="wRefund">환불 <span class="subtle">선택</span></label><input type="text" inputmode="numeric" id="wRefund" class="f n money" value="0"></div>
+                <div class="fld"><label for="wNext">익일예정 매출</label><input type="text" inputmode="numeric" id="wNext" class="f n money" value="0"><span class="hint" id="wNextH">0 원</span></div>
+                <div class="fld"><label for="wGoal">익일 목표</label><input type="text" inputmode="numeric" id="wGoal" class="f n money" value="0"><span class="hint" id="wGoalH">0 원</span></div>
                 <div class="fld"><label for="wD1">익일 상담</label><input type="number" min="0" id="wD1" class="f n" value="0"></div>
                 <div class="fld"><label for="wD2">모레 상담</label><input type="number" min="0" id="wD2" class="f n" value="0"></div>
               </div>
@@ -936,7 +938,17 @@ const nf=n=>(Number(n)||0).toLocaleString("ko-KR");
 const money=n=>nf(n)+"원";
 const rate=(a,b)=>(!b||b<=0)?null:Math.round((a/b)*1000)/10;
 const rt=(a,b)=>{const r=rate(a,b);return r===null?"—":r.toFixed(1)+"%";};
-const num=el=>Math.max(0,Number(el.value)||0);
+const num=el=>Math.max(0,Number(String(el.value).replace(/[^0-9.-]/g,""))||0);
+const digits=v=>String(v).replace(/\D/g,"").replace(/^0+(?=\d)/,"");
+function fmtCell(el){
+  const raw=el.value, pos=el.selectionStart==null?raw.length:el.selectionStart;
+  const before=(raw.slice(0,pos).match(/\d/g)||[]).length;
+  const d=digits(raw), out=d?Number(d).toLocaleString("ko-KR"):"";
+  if(el.value!==out) el.value=out;
+  let i=0,c=0;
+  while(i<out.length&&c<before){ if(out.charCodeAt(i)>=48&&out.charCodeAt(i)<=57) c++; i++; }
+  try{ el.setSelectionRange(i,i); }catch(e){}
+}
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const DOW=["일","월","화","수","목","금","토"];
 const dowOf=s=>DOW[parse(s).getDay()];
@@ -1180,12 +1192,14 @@ function formData(){
     journal:j, note:$("#wNote").value.trim()
   };
 }
+function fmtMoneyFields(){ $$(".money").forEach(el=>{ const d=digits(el.value); el.value=d?Number(d).toLocaleString("ko-KR"):"0"; }); }
 function fillForm(r){
   $("#wRole").value=r.role||"책임멘토";
   $("#wPlan").value=r.plan||0; $("#wVisit").value=r.visit||0; $("#wReg").value=r.reg||0; $("#wCod").value=r.cod||0;
   $("#wRev").value=r.rev||0; $("#wRefund").value=r.refund||0; $("#wNext").value=r.next||0; $("#wGoal").value=r.goal||0;
   $("#wD1").value=r.d1||0; $("#wD2").value=r.d2||0; $("#wBlog").value=r.blog||0; $("#wBlogN").value=r.blogNote||"";
   $("#wJournal").value=(r.journal||[]).join("\n"); $("#wNote").value=r.note||"";
+  fmtMoneyFields();
 }
 function blankForm(){
   fillForm({role:S.roles[$("#wMentor").value]||"책임멘토"});
@@ -1252,26 +1266,50 @@ function fallbackCopy(t,cb){
   document.body.removeChild(a);
 }
 
+/* ── 보고 열기 · 삭제 (여러 화면 공용) ── */
+function openReport(date,mentor){
+  if(!date) return;
+  $("#wDate").value=date;
+  if(mentor&&(isLeader()||mentor===S.me)) $("#wMentor").value=mentor;
+  loadForm(); go("write");
+  toast(`${kdate(date)} ${$("#wMentor").value} 보고를 열었습니다`);
+}
+async function delReport(date,mentor){
+  if(mentor==="__ALL__"){ toast("멘토를 선택한 상태에서 삭제할 수 있습니다"); return; }
+  if(Cloud.on&&Cloud.user&&!isLeader()&&mentor!==S.me){ toast("본인 보고만 삭제할 수 있습니다"); return; }
+  const i=S.reports.findIndex(r=>r.date===date&&r.mentor===mentor);
+  if(i<0){ toast("저장된 보고가 없습니다"); return; }
+  if(!confirm(`${kdate(date)} ${mentor} 보고를 삭제할까요?\n되돌릴 수 없습니다.`)) return;
+  S.reports.splice(i,1);
+  await save();
+  bizDirty.delete(date);
+  renderBiz(); renderLog(); renderDash();
+  if($("#wDate").value===date&&$("#wMentor").value===mentor){ blankForm(); refreshForm(); $("#wState").textContent="신규"; }
+  toast("삭제되었습니다");
+}
+
 /* ══════════════════ 일자별 기록 ══════════════════ */
 function renderLog(){
   const d=$("#logDate").value||today();
   const day=byDate(d), t=sum(day);
-  $("#logDay").innerHTML=day.length?`<div class="tw"><table class="t" style="min-width:1000px">
+  $("#logDay").innerHTML=day.length?`<div class="tw"><table class="t" style="min-width:1090px">
     <colgroup><col style="width:104px"><col style="width:64px"><col style="width:64px"><col style="width:76px">
       <col style="width:62px"><col style="width:58px"><col style="width:78px"><col style="width:112px"><col style="width:112px">
-      <col style="width:66px"><col style="width:66px"><col style="width:66px"><col style="width:70px"><col></colgroup>
+      <col style="width:66px"><col style="width:66px"><col style="width:66px"><col style="width:70px"><col><col style="width:84px"></colgroup>
     <thead><tr><th>멘토</th><th class="r">예정</th><th class="r">방문</th><th class="r">상담률</th>
       <th class="r">등록</th><th class="r">COD</th><th class="r">등록률</th><th class="r">매출</th><th class="r">익일예정</th>
-      <th class="r">익일</th><th class="r">모레</th><th class="r">블로그</th><th class="r">학사일지</th><th>비고</th></tr></thead>
+      <th class="r">익일</th><th class="r">모레</th><th class="r">블로그</th><th class="r">학사일지</th><th>비고</th><th>작업</th></tr></thead>
     <tbody>${day.map(r=>`<tr>
       <td class="nm">${esc(r.mentor)}</td><td class="n">${nf(r.plan)}</td><td class="n">${nf(r.visit)}</td>
       <td class="n">${rt(r.visit,r.plan)}</td><td class="n">${nf(r.reg)}</td><td class="n">${nf(r.cod)}</td>
       <td class="n">${rt(r.reg,r.visit)}</td><td class="n">${nf(r.rev)}</td><td class="n">${nf(r.next)}</td>
       <td class="n">${nf(r.d1)}</td><td class="n">${nf(r.d2)}</td><td class="n">${nf(r.blog)}</td>
-      <td class="n">${(r.journal||[]).length}</td><td title="${esc(r.note)}">${esc(r.note)||"—"}</td></tr>`).join("")}</tbody>
+      <td class="n">${(r.journal||[]).length}</td><td title="${esc(r.note)}">${esc(r.note)||"—"}</td>
+      <td class="acts"><button class="ib" data-lopen="${r.date}|${esc(r.mentor)}" title="수정">✎</button>
+      <button class="ib dgr" data-ldel="${r.date}|${esc(r.mentor)}" title="삭제">✕</button></td></tr>`).join("")}</tbody>
     <tfoot><tr><td>합계 ${day.length}명</td><td>${nf(t.plan)}</td><td>${nf(t.visit)}</td><td>${rt(t.visit,t.plan)}</td>
       <td>${nf(t.reg)}</td><td>${nf(t.cod)}</td><td>${rt(t.reg,t.visit)}</td><td>${nf(t.rev)}</td><td>${nf(t.next)}</td>
-      <td>${nf(t.d1)}</td><td>${nf(t.d2)}</td><td>${nf(t.blog)}</td><td>${nf(t.journal)}</td><td></td></tr></tfoot>
+      <td>${nf(t.d1)}</td><td>${nf(t.d2)}</td><td>${nf(t.blog)}</td><td>${nf(t.journal)}</td><td></td><td></td></tr></tfoot>
   </table></div>`:`<div class="empty"><b>${kdate(d)} 보고 없음</b>보고 작성 탭에서 이 날짜의 기록을 남기면 여기에 표시됩니다.</div>`;
 
   const mv=$("#logMonth").value||d.slice(0,7);
@@ -1389,20 +1427,23 @@ function renderBiz(){
     const s=sum(list), has=list.length>0;
     const cells=BCOL.map(c=>all
       ? `<td class="n">${nf(s[c.f])}</td>`
-      : `<td class="cell-in"><input class="ci" type="number" min="0" inputmode="numeric" data-d="${d}" data-f="${c.f}" value="${s[c.f]||""}" placeholder="0"></td>`
+      : `<td class="cell-in"><input class="ci" type="text" inputmode="numeric" data-d="${d}" data-f="${c.f}" value="${s[c.f]?nf(s[c.f]):""}" placeholder="0"></td>`
     ).join("");
     return `<tr data-row="${d}" class="${has?"":"off"}">
       <td class="dt">${d.slice(5).replace("-",".")} <span class="subtle">(${dowOf(d)})</span></td>
       ${cells}
       <td class="calc" data-rate="${d}">${rt(s.visit,s.plan)}</td>
       <td class="calc" data-rate2="${d}">${rt(s.reg,s.visit)}</td>
-      <td>${all?(has?`${list.length}명 제출`:"—"):(has?'<span class="tag t3">저장됨</span>':'<span class="subtle">미작성</span>')}</td>
+      <td class="acts">${all?(has?`${list.length}명 제출`:"—")
+        :`${has?'<span class="tag t3">저장됨</span>':'<span class="subtle">미작성</span>'}
+           <button class="ib" data-open="${d}" title="보고 작성에서 열기">✎</button>
+           ${has?`<button class="ib dgr" data-delrep="${d}" title="이 보고 삭제">✕</button>`:""}`}</td>
     </tr>`;
   }).join("");
   const T=sum(all?S.reports.filter(r=>days.indexOf(r.date)>=0)
                 :S.reports.filter(r=>r.mentor===who&&days.indexOf(r.date)>=0));
-  $("#bizTable").innerHTML=`<div class="tw"><table class="t" style="min-width:1090px">
-    <colgroup><col style="width:104px">${cols}<col style="width:74px"><col style="width:74px"><col></colgroup>
+  $("#bizTable").innerHTML=`<div class="tw"><table class="t" style="min-width:1160px">
+    <colgroup><col style="width:104px">${cols}<col style="width:74px"><col style="width:74px"><col style="width:132px"></colgroup>
     <thead><tr><th>영업일</th>${head}<th class="r">상담률</th><th class="r">등록률</th><th>상태</th></tr></thead>
     <tbody>${rows}</tbody>
     <tfoot><tr><td>${ym.replace("-",".")} 합계</td>
@@ -1602,6 +1643,7 @@ $("#rangePills").addEventListener("click",e=>{
 });
 
 WF.forEach(id=>{const el=$("#"+id); if(el) el.addEventListener("input",refreshForm);});
+$$(".money").forEach(el=>el.addEventListener("input",()=>fmtCell(el)));
 $("#wDate").addEventListener("change",loadForm);
 $("#wMentor").addEventListener("change",loadForm);
 $("#wLoad").onclick=loadForm;
@@ -1638,12 +1680,22 @@ $("#bizCfg").addEventListener("click",async e=>{
 });
 $("#bizTable").addEventListener("input",e=>{
   const el=e.target.closest("input.ci"); if(!el) return;
+  fmtCell(el);
   const d=el.dataset.d;
   bizDirty.add(d);
   const tr=el.closest("tr"); if(tr) tr.classList.add("dirty");
   const p=bizCellSum(d,"plan"), v=bizCellSum(d,"visit"), r=bizCellSum(d,"reg");
   const c1=$(`#bizTable [data-rate="${d}"]`), c2=$(`#bizTable [data-rate2="${d}"]`);
   if(c1) c1.textContent=rt(v,p); if(c2) c2.textContent=rt(r,v);
+});
+$("#bizTable").addEventListener("click",async e=>{
+  const op=e.target.closest("[data-open]");
+  if(op){
+    const who=$("#bizMentor").value;
+    openReport(op.dataset.open, who==="__ALL__"?(S.me||S.mentors[0]):who); return;
+  }
+  const dl=e.target.closest("[data-delrep]");
+  if(dl){ await delReport(dl.dataset.delrep,$("#bizMentor").value); return; }
 });
 $("#bizTable").addEventListener("keydown",e=>{
   const el=e.target.closest("input.ci"); if(!el) return;
@@ -1655,6 +1707,13 @@ $("#bizTable").addEventListener("keydown",e=>{
 });
 
 
+$("#logDay").addEventListener("click",async e=>{
+  const op=e.target.closest("[data-lopen]");
+  if(op){ const [d,m]=op.dataset.lopen.split("|"); openReport(d,m); return; }
+  const dl=e.target.closest("[data-ldel]");
+  if(dl){ const [d,m]=dl.dataset.ldel.split("|"); await delReport(d,m); return; }
+});
+$("#logDate").addEventListener("change",renderLog);
 $("#logMonth").addEventListener("change",renderLog);
 $("#logGroup").addEventListener("change",renderLog);
 $("#logPrev").onclick=()=>{ $("#logDate").value=shift($("#logDate").value||today(),-1); renderLog(); };
