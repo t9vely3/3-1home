@@ -318,6 +318,11 @@ table.t td.calc{font-family:var(--mono);font-variant-numeric:tabular-nums;text-a
   cursor:pointer;font-size:11px;line-height:1;color:var(--tx-2);display:inline-flex;align-items:center;justify-content:center}
 .ib:hover{background:var(--card-2);color:var(--tx)} .ib.dgr:hover{color:var(--bad);border-color:#E6C9C4}
 .ib:disabled{opacity:.3;cursor:default}
+.mtblk{padding:8px 0;border-bottom:1px solid var(--line-2)}
+.mtblk .mtrow{border-bottom:0;padding:0}
+.mtsub{display:flex;align-items:center;gap:8px;padding:6px 0 0 26px}
+.mtsub .f{height:28px;font-size:12.5px;flex:1 1 auto;min-width:0}
+.mtsub .ck{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--tx-2);white-space:nowrap;cursor:pointer}
 .warnbox{display:flex;gap:9px;align-items:flex-start;padding:11px 13px;background:var(--brass-soft);border-radius:var(--r-sm);font-size:12.5px;color:#7A5E2E}
 .stack{display:flex;flex-direction:column;gap:14px}
 .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
@@ -625,7 +630,7 @@ table.t td.calc{font-family:var(--mono);font-variant-numeric:tabular-nums;text-a
           <div class="bd">
             <div id="mtPreview"></div>
             <div class="fld" style="margin-top:16px">
-              <label for="meSel">내 이름 <span class="subtle">보고 작성 시 기본값</span></label>
+              <label for="meSel">내 이름 <span class="subtle" id="meHint">보고 작성 시 기본값</span></label>
               <select id="meSel" class="f"></select>
             </div>
           </div>
@@ -684,6 +689,26 @@ table.t td.calc{font-family:var(--mono);font-variant-numeric:tabular-nums;text-a
     </section>
   </main>
 </div>
+<div class="ovl" id="linkOvl">
+  <div class="mdl" style="max-width:392px" role="dialog" aria-modal="true">
+    <div class="hd"><h2>계정 연결</h2></div>
+    <div class="bd">
+      <div class="warnbox" style="margin-bottom:14px" id="linkTx">—</div>
+      <div class="fld"><label for="linkSel">담당 멘토</label>
+        <select id="linkSel" class="f"></select></div>
+      <div class="fld" id="linkNewWrap" style="margin-top:11px" hidden>
+        <label for="linkNew">새 멘토 이름</label>
+        <input type="text" id="linkNew" class="f" placeholder="이름 입력">
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;margin-top:14px;cursor:pointer">
+        <input type="checkbox" id="linkLeader">
+        <span style="font-size:13px">이 계정은 <b>팀장</b>입니다 — 전체 멘토 조회·수정 가능</span>
+      </label>
+      <button class="btn pri" id="linkBtn" style="width:100%;margin-top:16px;height:38px">연결하고 시작</button>
+    </div>
+  </div>
+</div>
+
 <div class="ovl solid" id="loginOvl">
   <div class="mdl" style="max-width:392px" role="dialog" aria-modal="true">
     <div class="hd"><h2>3-1팀 퇴근보고</h2><div class="sp" style="flex:1"></div>
@@ -770,7 +795,7 @@ const Cloud={
       return new Promise(res=>{
         this.auth.onAuthStateChanged(async u=>{
           this.user=u||null;
-          if(u){ hideLogin(); await this.attach(); }
+          if(u){ hideLogin(); await this.attach(); resolveMe(); }
           else { this.detach(); this.on=false; setSync("signin"); showLogin(); }
           res(true);
         });
@@ -797,9 +822,11 @@ const Cloud={
         if(Array.isArray(c.mentors)) S.mentors=c.mentors;
         if(c.roles) S.roles=c.roles;
         if(c.biz) S.biz=c.biz;
+        if(c.accounts) S.accounts=c.accounts;
+        if(Array.isArray(c.leaders)) S.leaders=c.leaders;
         this.shadow.cfg=cfgJson();
       }
-      Local.save(S); syncMentorSelects(); softRender();
+      Local.save(S); resolveMe(); softRender();
     },er=>cloudErr(er)));
   },
   detach(){ this.unsub.forEach(f=>{try{f();}catch(e){}}); this.unsub=[]; },
@@ -835,7 +862,7 @@ const Cloud={
       const cj=cfgJson();
       if(this.shadow.cfg!==cj){
         jobs.push(base.collection("config").doc("team")
-          .set({mentors:S.mentors,roles:S.roles,biz:S.biz},{merge:true}));
+          .set({mentors:S.mentors,roles:S.roles,biz:S.biz,accounts:S.accounts,leaders:S.leaders},{merge:true}));
         this.shadow.cfg=cj;
       }
       await Promise.all(jobs);
@@ -858,7 +885,7 @@ function cloudErr(e){
 const rid=r=>`${r.date}_${r.mentor}`;
 const RK=["date","mentor","role","plan","visit","reg","cod","rev","refund","next","goal","d1","d2","blog","blogNote","journal","note"];
 const repJson=r=>JSON.stringify(RK.map(k=>r[k]===undefined?null:r[k]));
-const cfgJson=()=>JSON.stringify([S.mentors,S.roles,S.biz]);
+const cfgJson=()=>JSON.stringify([S.mentors,S.roles,S.biz,S.accounts,S.leaders]);
 
 function setSync(st){
   const b=$("#syncBadge"), t=$("#syncTx"); if(!b) return;
@@ -894,7 +921,7 @@ function softRender(){
 async function save(){ Local.save(S); Local.saveUi(S.ui); await Cloud.push(); return true; }
 
 /* ══════════════════ state ══════════════════ */
-let S={ reports:[], events:[], mentors:["김태욱","최봉경","김민영","조용준","최병훈"], me:"조용준", roles:{}, biz:{},
+let S={ reports:[], events:[], mentors:["김태욱","최봉경","김민영","조용준","최병훈"], me:"", roles:{}, biz:{}, accounts:{}, leaders:[],
         ui:{font:"plex",digit:"mono",scale:"md"} };
 let dashDays=10, calCursor=null, calSel=null, logMonthVal="", chartRev=null, chartFn=null, chartMt=null;
 
@@ -1201,6 +1228,9 @@ async function saveReport(){
   const r=formData();
   if(!r.date){ toast("날짜를 선택하세요"); return; }
   if(!r.mentor){ toast("멘토를 선택하세요"); return; }
+  if(Cloud.on&&Cloud.user&&!isLeader()&&r.mentor!==S.me){
+    toast("본인 명의로만 저장할 수 있습니다"); return;
+  }
   const i=S.reports.findIndex(x=>x.date===r.date&&x.mentor===r.mentor);
   if(i>=0) S.reports[i]=Object.assign(S.reports[i],r); else S.reports.push(r);
   S.reports.sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:a.mentor.localeCompare(b.mentor));
@@ -1392,6 +1422,8 @@ function renderBizCal(ym){
 }
 async function setBiz(ym,list){
   if(!S.biz) S.biz={};
+  if(!S.accounts) S.accounts={};
+  if(!Array.isArray(S.leaders)) S.leaders=[];
   S.biz[ym]=list.slice().sort();
   await save(); renderBiz();
   if($("#v-dash").classList.contains("on")) renderDash();
@@ -1406,6 +1438,9 @@ function bizCellSum(d,f){
 async function saveBiz(){
   const who=$("#bizMentor").value;
   if(who==="__ALL__"){ toast("멘토를 선택하면 입력할 수 있습니다"); return; }
+  if(Cloud.on&&Cloud.user&&!isLeader()&&who!==S.me){
+    toast("본인 명의로만 저장할 수 있습니다"); return;
+  }
   if(!bizDirty.size){ toast("변경된 내용이 없습니다"); return; }
   let n=0;
   bizDirty.forEach(d=>{
@@ -1423,11 +1458,79 @@ async function saveBiz(){
   await save(); renderBiz(); toast(`${n}일 저장됨`);
 }
 
+/* ══════════════════ 계정 · 권한 ══════════════════ */
+const myEmail=()=>((Cloud.user&&Cloud.user.email)||"").toLowerCase();
+function isLeader(){
+  if(!(Cloud.on&&Cloud.user)) return true;          // 로컬 모드는 제한 없음
+  if(!S.leaders.length) return true;                // 팀장 미지정 초기 상태
+  return S.leaders.indexOf(myEmail())>=0;
+}
+function resolveMe(){
+  if(Cloud.on&&Cloud.user){
+    const em=myEmail(), m=S.accounts[em];
+    if(m&&S.mentors.indexOf(m)>=0){ S.me=m; $("#linkOvl").classList.remove("on"); }
+    else { showLink(em); }
+  }
+  syncMentorSelects(); applyPerms(); renderSet();
+}
+function showLink(em){
+  $("#linkTx").textContent=`${em} 계정이 아직 어느 멘토와 연결되지 않았습니다. 본인을 선택하세요. 이후 이 계정으로 로그인하면 자동으로 적용됩니다.`;
+  $("#linkSel").innerHTML=S.mentors.map(m=>`<option value="${esc(m)}">${esc(m)}</option>`).join("")
+    +`<option value="__NEW__">＋ 새 멘토로 추가</option>`;
+  $("#linkNewWrap").hidden=true;
+  $("#linkLeader").checked=!S.leaders.length;
+  $("#linkOvl").classList.add("on");
+}
+$("#linkSel").addEventListener("change",e=>{
+  const n=e.target.value==="__NEW__";
+  $("#linkNewWrap").hidden=!n; if(n) $("#linkNew").focus();
+});
+$("#linkBtn").onclick=async()=>{
+  let name=$("#linkSel").value;
+  if(name==="__NEW__"){
+    name=$("#linkNew").value.trim();
+    if(!name){ toast("이름을 입력하세요"); return; }
+    if(S.mentors.indexOf(name)<0) S.mentors.push(name);
+  }
+  const em=myEmail();
+  S.accounts[em]=name;
+  if($("#linkLeader").checked){ if(S.leaders.indexOf(em)<0) S.leaders.push(em); }
+  else S.leaders=S.leaders.filter(x=>x!==em);
+  S.me=name;
+  $("#linkOvl").classList.remove("on");
+  await save(); syncMentorSelects(); applyPerms(); renderSet(); loadForm();
+  toast(`${name} 으로 연결되었습니다`);
+};
+function applyPerms(){
+  const lead=isLeader(), cloud=Cloud.on&&Cloud.user;
+  const wm=$("#wMentor");
+  if(cloud&&!lead&&S.me){
+    wm.innerHTML=`<option value="${esc(S.me)}">${esc(S.me)}</option>`;
+    wm.value=S.me; wm.disabled=true;
+    $("#bizMentor").value=S.me;
+  } else wm.disabled=false;
+  const bm=$("#bizMentor");
+  if(cloud&&!lead&&S.me){
+    bm.innerHTML=`<option value="${esc(S.me)}">${esc(S.me)}</option>`
+      +`<option value="__ALL__">전체 (합계·읽기)</option>`;
+    if(bm.value!=="__ALL__") bm.value=S.me;
+  }
+  ["#wMtEdit","#dashMtEdit","#setMtEdit","#dWipe","#dImp"].forEach(sel=>{
+    const el=$(sel); if(el) el.hidden=cloud&&!lead;
+  });
+  const ms=$("#meSel"); if(ms) ms.disabled=!!cloud;
+  const mh=$("#meHint");
+  if(mh) mh.textContent=cloud?"로그인 계정에 연결된 멘토 (멘토 편집에서 변경)":"보고 작성 시 기본값";
+  const railWho=$("#railWho");
+  if(railWho) railWho.textContent=(S.me||"미연결")+(cloud&&lead?" · 팀장":"");
+}
+
 /* ══════════════════ 설정 ══════════════════ */
 function renderSet(){
   $("#mtPreview").innerHTML=S.mentors.length?S.mentors.map(m=>`<div class="evrow">
       <span class="bdy"><span class="tt">${esc(m)}</span>
-      <span class="mt">보고 ${S.reports.filter(r=>r.mentor===m).length}건${S.roles[m]?" · "+esc(S.roles[m]):""}</span></span>
+      <span class="mt">${(()=>{const em=Object.keys(S.accounts).find(k=>S.accounts[k]===m);
+        return em?esc(em)+(S.leaders.indexOf(em)>=0?" · 팀장":""):"계정 미연결";})()} · 보고 ${S.reports.filter(r=>r.mentor===m).length}건</span></span>
       </div>`).join("")
     :`<div class="empty" style="padding:20px 8px"><b>멘토 없음</b>「멘토 편집」에서 이름을 추가하세요.</div>`;
   $("#meSel").innerHTML=S.mentors.map(m=>`<option${m===S.me?" selected":""}>${esc(m)}</option>`).join("");
@@ -1454,13 +1557,21 @@ function closeMt(){ $("#mtOvl").classList.remove("on"); }
 function renderMt(){
   $("#mtList").innerHTML=S.mentors.length?S.mentors.map((m,i)=>{
     const n=S.reports.filter(r=>r.mentor===m).length;
-    return `<div class="mtrow" data-i="${i}">
-      <span class="h">${i+1}</span>
-      <input type="text" value="${esc(m)}" data-ren="${i}" aria-label="멘토 이름">
-      <span class="cnt">${n}건</span>
-      <button class="ib" data-up="${i}" title="위로"${i===0?" disabled":""}>▲</button>
-      <button class="ib" data-dn="${i}" title="아래로"${i===S.mentors.length-1?" disabled":""}>▼</button>
-      <button class="ib dgr" data-rm="${i}" title="제외">✕</button>
+    const em=Object.keys(S.accounts).find(k=>S.accounts[k]===m)||"";
+    const lead=em&&S.leaders.indexOf(em)>=0;
+    return `<div class="mtblk">
+      <div class="mtrow" data-i="${i}">
+        <span class="h">${i+1}</span>
+        <input type="text" value="${esc(m)}" data-ren="${i}" aria-label="멘토 이름">
+        <span class="cnt">${n}건</span>
+        <button class="ib" data-up="${i}" title="위로"${i===0?" disabled":""}>▲</button>
+        <button class="ib" data-dn="${i}" title="아래로"${i===S.mentors.length-1?" disabled":""}>▼</button>
+        <button class="ib dgr" data-rm="${i}" title="제외">✕</button>
+      </div>
+      <div class="mtsub">
+        <input type="email" class="f" data-mail="${esc(m)}" value="${esc(em)}" placeholder="로그인 계정 이메일">
+        <label class="ck"><input type="checkbox" data-lead="${esc(m)}"${lead?" checked":""}${em?"":" disabled"}>팀장</label>
+      </div>
     </div>`;
   }).join(""):`<div class="empty" style="padding:22px 8px"><b>멘토 없음</b>위에 이름을 입력해 추가하세요.</div>`;
 }
@@ -1478,6 +1589,7 @@ function syncMentorSelects(){
   bc.innerHTML=S.mentors.map(m=>`<option value="${esc(m)}">${esc(m)}</option>`).join("")
     +`<option value="__ALL__">전체 (합계·읽기)</option>`;
   bc.value=(bcur&&(bcur==="__ALL__"||S.mentors.includes(bcur)))?bcur:(S.mentors.includes(S.me)?S.me:(S.mentors[0]||"__ALL__"));
+  applyPerms();
   $("#railWho").textContent=S.me||"—";
 }
 
@@ -1592,6 +1704,7 @@ $("#mtList").addEventListener("click",async e=>{
     const i=+b.dataset.rm, m=S.mentors[i], n=S.reports.filter(r=>r.mentor===m).length;
     if(!confirm(`${m}을 목록에서 제외할까요?${n?`\n(저장된 보고 ${n}건은 그대로 남습니다)`:""}`)) return;
     S.mentors.splice(i,1);
+    Object.keys(S.accounts).forEach(k=>{ if(S.accounts[k]===m) delete S.accounts[k]; });
     if(S.me===m) S.me=S.mentors[0]||"";
     await mtChanged(); toast(m+" 제외됨"); return;
   }
@@ -1600,6 +1713,26 @@ $("#mtList").addEventListener("click",async e=>{
   if(b.dataset.dn!==undefined){ const i=+b.dataset.dn; if(i<S.mentors.length-1){ mv(i,i+1); await mtChanged(); } return; }
 });
 $("#mtList").addEventListener("change",async e=>{
+  const mail=e.target.closest("[data-mail]");
+  if(mail){
+    const m=mail.dataset.mail, v=mail.value.trim().toLowerCase();
+    Object.keys(S.accounts).forEach(k=>{ if(S.accounts[k]===m) delete S.accounts[k]; });
+    if(v){
+      const dup=S.accounts[v];
+      if(dup&&dup!==m){ toast(`${v} 는 이미 ${dup} 에 연결되어 있습니다`); renderMt(); return; }
+      S.accounts[v]=m;
+    }
+    await mtChanged(); toast(v?`${m} ↔ ${v} 연결됨`:`${m} 계정 연결 해제`); return;
+  }
+  const lead=e.target.closest("[data-lead]");
+  if(lead){
+    const m=lead.dataset.lead;
+    const em=Object.keys(S.accounts).find(k=>S.accounts[k]===m);
+    if(!em){ toast("먼저 계정 이메일을 입력하세요"); renderMt(); return; }
+    if(lead.checked){ if(S.leaders.indexOf(em)<0) S.leaders.push(em); }
+    else S.leaders=S.leaders.filter(x=>x!==em);
+    await mtChanged(); toast(lead.checked?`${m} 팀장 권한 부여`:`${m} 팀장 권한 해제`); return;
+  }
   const el=e.target.closest("[data-ren]"); if(!el) return;
   const i=+el.dataset.ren, old=S.mentors[i], v=el.value.trim();
   if(!v){ el.value=old; toast("이름은 비울 수 없습니다"); return; }
@@ -1608,6 +1741,7 @@ $("#mtList").addEventListener("change",async e=>{
   S.mentors[i]=v;
   S.reports.forEach(r=>{ if(r.mentor===old) r.mentor=v; });
   S.events.forEach(x=>{ if(x.mentor===old) x.mentor=v; });
+  Object.keys(S.accounts).forEach(k=>{ if(S.accounts[k]===old) S.accounts[k]=v; });
   if(S.roles[old]){ S.roles[v]=S.roles[old]; delete S.roles[old]; }
   if(S.me===old) S.me=v;
   await mtChanged(); toast(`${old} → ${v} 변경됨`);
@@ -1638,7 +1772,7 @@ $("#dFile").addEventListener("change",e=>{
       const o=JSON.parse(rd.result);
       if(!o||!Array.isArray(o.reports)) throw 0;
       if(!confirm("현재 데이터를 가져온 파일로 교체할까요?")) return;
-      S=Object.assign({reports:[],events:[],mentors:[],me:"",roles:{},biz:{},ui:{font:"plex",digit:"mono",scale:"md"}},o);
+      S=Object.assign({reports:[],events:[],mentors:[],me:"",roles:{},biz:{},accounts:{},leaders:[],ui:{font:"plex",digit:"mono",scale:"md"}},o);
       await save(); boot(true); toast("가져오기 완료");
     }catch(err){ toast("파일 형식이 올바르지 않습니다"); }
     e.target.value="";
@@ -1667,6 +1801,8 @@ async function boot(keep){
     if(!S.roles) S.roles={};
   }
   if(!S.biz) S.biz={};
+  if(!S.accounts) S.accounts={};
+  if(!Array.isArray(S.leaders)) S.leaders=[];
   S.ui=Object.assign({font:"plex",digit:"mono",scale:"md"},Local.ui()||S.ui||{});
   applyUI();
   const t=today();
