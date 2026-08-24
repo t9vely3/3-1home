@@ -158,7 +158,7 @@ textarea.f{height:auto;padding:9px 10px;resize:vertical;line-height:1.55}
 .tw{overflow-x:auto;-webkit-overflow-scrolling:touch}
 table.t{width:100%;min-width:820px;border-collapse:separate;border-spacing:0;table-layout:fixed}
 table.t th,table.t td{
-  padding:0 10px;height:38px;border-bottom:1px solid var(--line-2);
+  padding:0 8px;height:36px;border-bottom:1px solid var(--line-2);
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;vertical-align:middle
 }
 table.t th{
@@ -167,7 +167,19 @@ table.t th{
   position:sticky;top:0;z-index:2
 }
 table.t th.r,table.t td.r{text-align:right}
-table.t td.n{font-family:var(--mono);font-variant-numeric:tabular-nums;text-align:right}
+table.t td.n{font-family:var(--mono);font-variant-numeric:tabular-nums;text-align:right;font-size:12.5px}
+/* 건수 칸에 금액이 들어간 이상치 */
+table.t td.bad{color:var(--bad);font-weight:700;background:#FBF1EF;font-size:11px;letter-spacing:-.3px}
+table.t td.calc.bad{color:var(--bad)}
+/* 열 그룹 경계 */
+table.t th.gsep,table.t td.gsep{border-left:1px solid var(--line)}
+/* 첫 열 고정 (일자별 기록) */
+table.t td.mtn{position:sticky;left:0;z-index:1;background:var(--card);font-weight:600;
+  box-shadow:1px 0 0 var(--line-2)}
+table.t tbody tr:hover td.mtn{background:#FAFBFC}
+table.t thead tr th.mth{position:sticky;left:0;z-index:5;background:var(--card-2)}
+table.t thead tr.grp th.mth{background:#EDEFF2}
+table.t tfoot td.mtn{background:var(--card-2)}
 table.t td.nm{font-weight:600}
 table.t tbody tr:hover td{background:#FAFBFC}
 table.t tfoot td{
@@ -703,6 +715,10 @@ table.mxt tfoot td.mx{font-variant-numeric:tabular-nums;font-size:12.5px}
               <button class="pill on" data-v="key">핵심</button>
               <button class="pill" data-v="all">전체</button>
             </div>
+            <div class="pillbar munit" id="munitBiz">
+              <button class="pill" data-u="won">원</button>
+              <button class="pill" data-u="man">만원</button>
+            </div>
             <button class="btn sm" id="bizCfgT">영업일 설정</button>
             <button class="btn sm pri" id="bizSave">일괄 저장</button>
           </div>
@@ -732,10 +748,15 @@ table.mxt tfoot td.mx{font-variant-numeric:tabular-nums;font-size:12.5px}
       <div class="stack">
         <div class="card">
           <div class="hd"><h2>일자별 보고</h2><div class="sp"></div>
+            <div class="pillbar munit" id="munitLog">
+              <button class="pill" data-u="won">원</button>
+              <button class="pill" data-u="man">만원</button>
+            </div>
             <input type="date" class="f w150" id="logDate">
             <button class="btn sm gh" id="logPrev">◀</button>
             <button class="btn sm gh" id="logNext">▶</button>
           </div>
+          <div class="warnbox" id="logOdd" style="margin:0 14px 12px" hidden>—</div>
           <div class="bd" style="padding:0" id="logDay"></div>
         </div>
 
@@ -1181,6 +1202,16 @@ function toSec(str){
   const ss=Number(d.slice(-2))||0, mm=Number(d.slice(-4,-2))||0, hh=Number(d.slice(0,-4))||0;
   return hh*3600+mm*60+ss;
 }
+/* 금액 표기 단위 (읽기 전용 표에만 적용 · 입력 칸은 항상 원) */
+const MONEYF={inRev:1,expRev:1,rev:1,next:1,goal:1};
+const CNTF={plan:1,confirm:1,visit:1,proxy:1,reg:1,cod:1,d1:1,d2:1,blog:1,callCnt:1,extCnt:1};
+const CNT_MAX=300;                                  // 건수 칸 정상 범위 상한
+const badCnt=v=>(Number(v)||0)>CNT_MAX;
+const oddOf=r=>Object.keys(CNTF).filter(f=>badCnt(r[f]));
+const munit=()=>(S.ui&&S.ui.moneyUnit)||"won";
+const mnf=v=>munit()==="man"?nf(Math.round((Number(v)||0)/10000)):nf(v);
+/* 비율 표시 상한 — 값이 튀어도 칸이 밀리지 않게 */
+const rtc=(a,b)=>{const r=rate(a,b);if(r===null)return "0.0%";return r>999.9?"999%+":r.toFixed(1)+"%";};
 /* 완납 + COD = 총등록 (등록률·달성률에 함께 반영) */
 const tot=o=>(Number(o&&o.reg)||0)+(Number(o&&o.cod)||0);
 /* 오전보고 매출 표기 단위 */
@@ -1832,31 +1863,47 @@ async function delReport(date,mentor){
 function renderLog(){
   const d=$("#logDate").value||today();
   const day=byDate(d), t=sum(day);
-  $("#logDay").innerHTML=day.length?`<div class="tw"><table class="t" style="min-width:1524px">
-    <colgroup><col style="width:104px"><col style="width:64px"><col style="width:64px"><col style="width:76px">
-      <col style="width:56px"><col style="width:82px"><col style="width:62px">
-      <col style="width:82px"><col style="width:62px">
-      <col style="width:62px"><col style="width:58px"><col style="width:78px"><col style="width:112px"><col style="width:112px">
-      <col style="width:66px"><col style="width:66px"><col style="width:66px"><col style="width:70px"><col style="width:70px"><col><col style="width:84px"></colgroup>
-    <thead><tr><th>멘토</th><th class="r">예정</th><th class="r">방문</th><th class="r">상담률</th>
-      <th class="r">대리</th><th class="r">개인시간</th><th class="r">개인건</th><th class="r">내선시간</th><th class="r">내선건</th>
-      <th class="r">완납</th><th class="r">COD</th><th class="r">등록률</th><th class="r">매출</th><th class="r">익일예정</th>
-      <th class="r">익일</th><th class="r">모레</th><th class="r">블로그</th><th class="r">학사일지</th><th class="r">점수</th><th>비고</th><th>작업</th></tr></thead>
+  syncMunit();
+  const bd=(v)=>badCnt(v)?" bad":"";
+  const mw=munit()==="man"?86:112;
+  $("#logDay").innerHTML=day.length?`<div class="tw"><table class="t" style="min-width:${1254+mw*2}px">
+    <colgroup><col style="width:100px">
+      <col style="width:58px"><col style="width:58px"><col style="width:74px"><col style="width:58px">
+      <col style="width:84px"><col style="width:62px"><col style="width:84px"><col style="width:62px">
+      <col style="width:72px"><col style="width:68px"><col style="width:74px"><col style="width:${mw}px">
+      <col style="width:${mw}px"><col style="width:54px"><col style="width:54px">
+      <col style="width:60px"><col style="width:64px"><col style="width:64px"><col style="width:150px"><col style="width:78px"></colgroup>
+    <thead>
+      <tr class="grp"><th class="mth"></th><th colspan="4">상담</th><th class="gsep" colspan="4">통화</th>
+        <th class="gsep" colspan="4">등록 · 매출</th><th class="gsep" colspan="3">예고</th>
+        <th class="gsep" colspan="2">콘텐츠</th><th class="gsep">평가</th><th class="gsep" colspan="2"></th></tr>
+      <tr><th class="mth">멘토</th><th class="r">예정</th><th class="r">방문</th><th class="r">상담률</th><th class="r">대리</th>
+      <th class="r gsep">개인시간</th><th class="r">개인건</th><th class="r">내선시간</th><th class="r">내선건</th>
+      <th class="r gsep">완납</th><th class="r">COD</th><th class="r">등록률</th><th class="r">매출${munit()==="man"?"(만)":""}</th>
+      <th class="r gsep">익일예정${munit()==="man"?"(만)":""}</th><th class="r">익일</th><th class="r">모레</th>
+      <th class="r gsep">블로그</th><th class="r">학사일지</th><th class="r gsep">점수</th><th class="gsep">비고</th><th>작업</th></tr></thead>
     <tbody>${day.map(r=>`<tr>
-      <td class="nm">${esc(r.mentor)}</td><td class="n">${nf(r.plan)}</td><td class="n">${nf(r.visit)}</td>
-      <td class="n">${rt(r.visit,r.plan)}</td><td class="n">${nf(r.proxy)}</td><td class="n">${hms(r.callSec)}</td><td class="n">${nf(r.callCnt)}</td><td class="n">${hms(r.extSec)}</td><td class="n">${nf(r.extCnt)}</td>
-      <td class="n">${nf(r.reg)}</td><td class="n">${nf(r.cod)}</td>
-      <td class="n">${rt(tot(r),r.visit)}</td><td class="n">${nf(r.rev)}</td><td class="n">${nf(r.next)}</td>
-      <td class="n">${nf(r.d1)}</td><td class="n">${nf(r.d2)}</td><td class="n">${nf(r.blog)}</td>
-      <td class="n">${(r.journal||[]).length}</td><td class="n"><b>${r.pmDone?scNum(scoreOf(r).total):"—"}</b></td><td title="${esc(r.note)}">${esc(r.note)||"—"}</td>
+      <td class="mtn">${esc(r.mentor)}</td>
+      <td class="n${bd(r.plan)}">${nf(r.plan)}</td><td class="n${bd(r.visit)}">${nf(r.visit)}</td>
+      <td class="n">${rtc(r.visit,r.plan)}</td><td class="n${bd(r.proxy)}">${nf(r.proxy)}</td>
+      <td class="n gsep">${hms(r.callSec)}</td><td class="n${bd(r.callCnt)}">${nf(r.callCnt)}</td>
+      <td class="n">${hms(r.extSec)}</td><td class="n${bd(r.extCnt)}">${nf(r.extCnt)}</td>
+      <td class="n gsep${bd(r.reg)}">${nf(r.reg)}</td><td class="n${bd(r.cod)}">${nf(r.cod)}</td>
+      <td class="n${badCnt(tot(r))?" bad":""}">${rtc(tot(r),r.visit)}</td><td class="n">${mnf(r.rev)}</td>
+      <td class="n gsep">${mnf(r.next)}</td><td class="n${bd(r.d1)}">${nf(r.d1)}</td><td class="n${bd(r.d2)}">${nf(r.d2)}</td>
+      <td class="n gsep${bd(r.blog)}">${nf(r.blog)}</td><td class="n">${(r.journal||[]).length}</td>
+      <td class="n gsep"><b>${r.pmDone?scNum(scoreOf(r).total):"—"}</b></td>
+      <td class="gsep" title="${esc(r.note)}">${esc(r.note)||"—"}</td>
       <td class="acts"><button class="ib" data-lopen="${r.date}|${esc(r.mentor)}" title="수정">✎</button>
       <button class="ib dgr" data-ldel="${r.date}|${esc(r.mentor)}" title="삭제">✕</button></td></tr>`).join("")}</tbody>
-    <tfoot><tr><td>합계 ${day.length}명</td><td>${nf(t.plan)}</td><td>${nf(t.visit)}</td><td>${rt(t.visit,t.plan)}</td>
-      <td>${nf(t.proxy)}</td><td>${hms(t.callSec)}</td><td>${nf(t.callCnt)}</td><td>${hms(t.extSec)}</td><td>${nf(t.extCnt)}</td>
-      <td>${nf(t.reg)}</td><td>${nf(t.cod)}</td><td>${rt(tot(t),t.visit)}</td><td>${nf(t.rev)}</td><td>${nf(t.next)}</td>
-      <td>${nf(t.d1)}</td><td>${nf(t.d2)}</td><td>${nf(t.blog)}</td><td>${nf(t.journal)}</td>
-      <td>${(()=>{const ds=day.filter(x=>x.pmDone);return ds.length?"평균 "+scNum(ds.reduce((a,x)=>a+scoreOf(x).total,0)/ds.length):"—";})()}</td><td></td><td></td></tr></tfoot>
+    <tfoot><tr><td class="mtn">합계 ${day.length}명</td><td>${nf(t.plan)}</td><td>${nf(t.visit)}</td><td>${rtc(t.visit,t.plan)}</td>
+      <td>${nf(t.proxy)}</td><td class="gsep">${hms(t.callSec)}</td><td>${nf(t.callCnt)}</td><td>${hms(t.extSec)}</td><td>${nf(t.extCnt)}</td>
+      <td class="gsep">${nf(t.reg)}</td><td>${nf(t.cod)}</td><td>${rtc(tot(t),t.visit)}</td><td>${mnf(t.rev)}</td>
+      <td class="gsep">${mnf(t.next)}</td><td>${nf(t.d1)}</td><td>${nf(t.d2)}</td>
+      <td class="gsep">${nf(t.blog)}</td><td>${nf(t.journal)}</td>
+      <td class="gsep">${(()=>{const ds=day.filter(x=>x.pmDone);return ds.length?"평균 "+scNum(ds.reduce((a,x)=>a+scoreOf(x).total,0)/ds.length):"—";})()}</td><td class="gsep"></td><td></td></tr></tfoot>
   </table></div>`:`<div class="empty"><b>${kdate(d)} 보고 없음</b>보고 작성 탭에서 이 날짜의 기록을 남기면 여기에 표시됩니다.</div>`;
+  renderOdd();
 
   const mv=$("#logMonth").value||d.slice(0,7);
   const a=mv+"-01", b=mv+"-31", list=inRange(a,b), g=$("#logGroup").value;
@@ -1865,35 +1912,54 @@ function renderLog(){
   if(g==="mentor"){
     rows=S.mentors.map(m=>{
       const l=list.filter(r=>r.mentor===m), s=sum(l);
-      return `<tr><td class="nm">${esc(m)}</td><td class="n">${s.count}</td><td class="n">${nf(s.plan)}</td>
-        <td class="n">${nf(s.visit)}</td><td class="n">${rt(s.visit,s.plan)}</td>
-        <td class="n">${nf(s.reg)}</td><td class="n">${nf(s.cod)}</td>
-        <td class="n">${rt(tot(s),s.visit)}</td><td class="n">${nf(s.rev)}</td>
-        <td class="n">${s.count?nf(Math.round(s.rev/s.count)):0}</td><td class="n">${nf(s.blog)}</td><td class="n">${nf(s.journal)}</td></tr>`;
+      return `<tr><td class="mtn">${esc(m)}</td><td class="n">${s.count}</td><td class="n">${nf(s.plan)}</td>
+        <td class="n">${nf(s.visit)}</td><td class="n">${rtc(s.visit,s.plan)}</td>
+        <td class="n gsep${badCnt(s.reg)?" bad":""}">${nf(s.reg)}</td><td class="n${badCnt(s.cod)?" bad":""}">${nf(s.cod)}</td>
+        <td class="n${badCnt(tot(s))?" bad":""}">${rtc(tot(s),s.visit)}</td><td class="n">${mnf(s.rev)}</td>
+        <td class="n">${s.count?mnf(Math.round(s.rev/s.count)):0}</td><td class="n gsep">${nf(s.blog)}</td><td class="n">${nf(s.journal)}</td></tr>`;
     }).join("");
   }else{
     const ds=bizDays(mv);
     rows=ds.map(x=>{
       const s=sum(byDate(x));
-      return `<tr class="${s.count?"":"off"}"><td class="nm">${x.slice(5).replace("-",".")} (${dowOf(x)})</td><td class="n">${s.count}</td>
-        <td class="n">${nf(s.plan)}</td><td class="n">${nf(s.visit)}</td><td class="n">${rt(s.visit,s.plan)}</td>
-        <td class="n">${nf(s.reg)}</td><td class="n">${nf(s.cod)}</td>
-        <td class="n">${rt(tot(s),s.visit)}</td><td class="n">${nf(s.rev)}</td>
-        <td class="n">${s.count?nf(Math.round(s.rev/s.count)):0}</td><td class="n">${nf(s.blog)}</td><td class="n">${nf(s.journal)}</td></tr>`;
+      return `<tr class="${s.count?"":"off"}"><td class="mtn">${x.slice(5).replace("-",".")} (${dowOf(x)})</td><td class="n">${s.count}</td>
+        <td class="n">${nf(s.plan)}</td><td class="n">${nf(s.visit)}</td><td class="n">${rtc(s.visit,s.plan)}</td>
+        <td class="n gsep${badCnt(s.reg)?" bad":""}">${nf(s.reg)}</td><td class="n${badCnt(s.cod)?" bad":""}">${nf(s.cod)}</td>
+        <td class="n${badCnt(tot(s))?" bad":""}">${rtc(tot(s),s.visit)}</td><td class="n">${mnf(s.rev)}</td>
+        <td class="n">${s.count?mnf(Math.round(s.rev/s.count)):0}</td><td class="n gsep">${nf(s.blog)}</td><td class="n">${nf(s.journal)}</td></tr>`;
     }).join("");
   }
-  $("#logAgg").innerHTML=rows?`<div class="tw"><table class="t" style="min-width:1010px">
-    <colgroup><col style="width:112px"><col style="width:66px"><col style="width:66px"><col style="width:66px">
-      <col style="width:76px"><col style="width:62px"><col style="width:56px"><col style="width:76px"><col style="width:118px"><col style="width:110px">
-      <col style="width:72px"><col></colgroup>
-    <thead><tr><th>${g==="mentor"?"멘토":"일자"}</th><th class="r">제출</th><th class="r">예정</th><th class="r">방문</th>
-      <th class="r">상담률</th><th class="r">완납</th><th class="r">COD</th><th class="r">등록률</th><th class="r">매출</th>
-      <th class="r">건당매출</th><th class="r">블로그</th><th class="r">학사일지</th></tr></thead>
+  const aw=munit()==="man"?88:120;
+  $("#logAgg").innerHTML=rows?`<div class="tw"><table class="t" style="min-width:${792+aw*2}px">
+    <colgroup><col style="width:118px"><col style="width:62px"><col style="width:62px"><col style="width:62px">
+      <col style="width:76px"><col style="width:78px"><col style="width:72px"><col style="width:78px"><col style="width:${aw}px"><col style="width:${aw}px">
+      <col style="width:64px"><col style="width:76px"></colgroup>
+    <thead><tr><th class="mth">${g==="mentor"?"멘토":"일자"}</th><th class="r">제출</th><th class="r">예정</th><th class="r">방문</th>
+      <th class="r">상담률</th><th class="r gsep">완납</th><th class="r">COD</th><th class="r">등록률</th><th class="r">매출${munit()==="man"?"(만)":""}</th>
+      <th class="r">건당매출${munit()==="man"?"(만)":""}</th><th class="r gsep">블로그</th><th class="r">학사일지</th></tr></thead>
     <tbody>${rows}</tbody>
-    <tfoot><tr><td>${mv.replace("-",".")} 합계</td><td>${T.count}</td><td>${nf(T.plan)}</td><td>${nf(T.visit)}</td>
-      <td>${rt(T.visit,T.plan)}</td><td>${nf(T.reg)}</td><td>${nf(T.cod)}</td><td>${rt(tot(T),T.visit)}</td><td>${nf(T.rev)}</td>
-      <td>${T.count?nf(Math.round(T.rev/T.count)):0}</td><td>${nf(T.blog)}</td><td>${nf(T.journal)}</td></tr></tfoot>
+    <tfoot><tr><td class="mtn">${mv.replace("-",".")} 합계</td><td>${T.count}</td><td>${nf(T.plan)}</td><td>${nf(T.visit)}</td>
+      <td>${rtc(T.visit,T.plan)}</td><td class="gsep">${nf(T.reg)}</td><td>${nf(T.cod)}</td><td>${rtc(tot(T),T.visit)}</td><td>${mnf(T.rev)}</td>
+      <td>${T.count?mnf(Math.round(T.rev/T.count)):0}</td><td class="gsep">${nf(T.blog)}</td><td>${nf(T.journal)}</td></tr></tfoot>
   </table></div>`:`<div class="empty"><b>${mv.replace("-",".")} 기록 없음</b>해당 월에 저장된 보고가 없습니다.</div>`;
+}
+/* 건수 칸에 금액이 들어간 보고를 찾아 알린다 */
+const CNT_LABEL={plan:"오늘상담",confirm:"확정",visit:"방문",proxy:"대리",reg:"완납",cod:"COD",
+  d1:"익일상담",d2:"모레상담",blog:"블로그",callCnt:"개인 통화건수",extCnt:"내선 통화건수"};
+function renderOdd(){
+  const box=$("#logOdd"); if(!box) return;
+  const mv2=$("#logMonth").value||today().slice(0,7);
+  const bad=inRange(mv2+"-01",mv2+"-31").map(r=>({r,f:oddOf(r)})).filter(x=>x.f.length);
+  box.hidden=!bad.length;
+  if(!bad.length) return;
+  const head=bad.slice(0,4).map(x=>`${x.r.date.slice(5).replace("-",".")} ${esc(x.r.mentor)} `
+    +x.f.map(f=>`${CNT_LABEL[f]} ${nf(x.r[f])}`).join(" · ")).join(" / ");
+  box.innerHTML=`<b>건수 칸에 금액으로 보이는 값이 들어간 보고가 ${bad.length}건 있습니다.</b> `
+    +`등록률·점수가 함께 틀어지므로 해당 보고를 열어 고쳐 주세요 — ${head}${bad.length>4?` 외 ${bad.length-4}건`:""}`;
+}
+/* 금액 표기 단위 pill */
+function syncMunit(){
+  $$(".munit .pill").forEach(b=>b.classList.toggle("on",b.dataset.u===munit()));
 }
 function exportCsv(){
   const mv=$("#logMonth").value||today().slice(0,7);
@@ -1978,15 +2044,15 @@ function renderEvList(){
 
 /* ══════════════════ 월간 입력표 (영업일) ══════════════════ */
 const BCOL_ALL=[
-  {f:"inRev",t:"들어온",w:88,g:"am",k:1},{f:"expRev",t:"예정매출",w:88,g:"am",k:1},
-  {f:"plan",t:"오늘상담",w:66,g:"am",k:1},{f:"confirm",t:"확정",w:52,g:"am",k:1},
-  {f:"visit",t:"방문",w:52,g:"pm",k:1},{f:"proxy",t:"대리",w:52,g:"pm"},
-  {f:"callSec",t:"개인시간",w:82,time:1,g:"pm",k:1},{f:"callCnt",t:"개인건",w:58,g:"pm"},
-  {f:"extSec",t:"내선시간",w:82,time:1,g:"pm"},{f:"extCnt",t:"내선건",w:58,g:"pm"},
-  {f:"reg",t:"완납",w:52,g:"pm",k:1},{f:"cod",t:"COD",w:50,g:"pm",k:1},
-  {f:"rev",t:"금일매출",w:88,g:"pm",k:1},
-  {f:"next",t:"익일예정",w:88,g:"pm"},{f:"goal",t:"익일목표",w:88,g:"pm"},
-  {f:"d1",t:"익일",w:48,g:"pm"},{f:"d2",t:"모레",w:48,g:"pm"},{f:"blog",t:"블로그",w:54,g:"pm"}
+  {f:"inRev",t:"들어온",w:100,g:"am",k:1},{f:"expRev",t:"예정매출",w:100,g:"am",k:1},
+  {f:"plan",t:"오늘상담",w:64,g:"am",k:1},{f:"confirm",t:"확정",w:58,g:"am",k:1},
+  {f:"visit",t:"방문",w:58,g:"pm",k:1},{f:"proxy",t:"대리",w:58,g:"pm"},
+  {f:"callSec",t:"개인시간",w:84,time:1,g:"pm",k:1},{f:"callCnt",t:"개인건",w:62,g:"pm"},
+  {f:"extSec",t:"내선시간",w:84,time:1,g:"pm"},{f:"extCnt",t:"내선건",w:62,g:"pm"},
+  {f:"reg",t:"완납",w:72,g:"pm",k:1},{f:"cod",t:"COD",w:68,g:"pm",k:1},
+  {f:"rev",t:"금일매출",w:100,g:"pm",k:1},
+  {f:"next",t:"익일예정",w:100,g:"pm"},{f:"goal",t:"익일목표",w:100,g:"pm"},
+  {f:"d1",t:"익일",w:54,g:"pm"},{f:"d2",t:"모레",w:54,g:"pm"},{f:"blog",t:"블로그",w:60,g:"pm"}
 ];
 let bizView="key";
 let BCOL=BCOL_ALL.filter(c=>c.k);
@@ -2006,6 +2072,7 @@ function renderBiz(){
   const who=$("#bizMentor").value;
   const days=bizDays(ym);
   $("#bizCnt").textContent=`${ym.replace("-",".")} 영업일 ${days.length}일${isBizSet(ym)?" (직접 지정)":" (평일 자동)"}`;
+  syncMunit();
   renderBizCal(ym);
 
   if(!days.length){
@@ -2013,25 +2080,29 @@ function renderBiz(){
     return;
   }
   const all=who==="__ALL__";
-  const cols=BCOL.map(c=>`<col style="width:${c.w}px">`).join("");
-  const head=BCOL.map(c=>`<th class="r${c.g==="am"?" gam":""}">${c.t}</th>`).join("");
+  const man=all&&munit()==="man";                 // 읽기 전용일 때만 만원 표기
+  const cw=c=>(man&&MONEYF[c.f])?76:c.w;
+  const sep=c=>(c.f==="visit"?" gsep":"");        // 오전↔퇴근 경계
+  const cols=BCOL.map(c=>`<col style="width:${cw(c)}px">`).join("");
+  const head=BCOL.map(c=>`<th class="r${c.g==="am"?" gam":""}${sep(c)}">${c.t}${man&&MONEYF[c.f]?"(만)":""}</th>`).join("");
   const g=BG();
   const grp=`<tr class="grp"><th></th><th class="gam" colspan="${g.a}">오전 보고</th>`
-    +`<th colspan="${g.b}">퇴근 보고</th><th colspan="3">비율</th><th colspan="2"></th></tr>`;
+    +`<th class="gsep" colspan="${g.b}">퇴근 보고</th><th class="gsep" colspan="3">비율</th><th class="gsep" colspan="2"></th></tr>`;
   let rows="", wk=null, wkDays=[];
   const fmtV=(c,v)=>{
-    const t=c.time?hms(v):nf(v);
+    const t=c.time?hms(v):(MONEYF[c.f]?mnf(v):nf(v));
     return `<span class="${v?"":"z"}">${t}</span>`;
   };
+  const bad=(c,v)=>(CNTF[c.f]&&badCnt(v))?" bad":"";
   const wkRow=()=>{
     if(!wkDays.length) return "";
     const W=sum(all?S.reports.filter(r=>wkDays.indexOf(r.date)>=0)
                   :S.reports.filter(r=>r.mentor===who&&wkDays.indexOf(r.date)>=0));
     const label=`${wkDays[0].slice(5).replace("-",".")}~${wkDays[wkDays.length-1].slice(5).replace("-",".")}`;
     return `<tr class="wk"><td class="dt">주간 ${label}</td>
-      ${BCOL.map(c=>`<td class="n">${c.time?hms(W[c.f]):nf(W[c.f])}</td>`).join("")}
-      <td class="calc">${rt(W.visit,W.plan)}</td><td class="calc">${rt(tot(W),W.visit)}</td>
-      <td class="calc">${rt(W.rev,W.inRev+W.expRev)}</td>
+      ${BCOL.map(c=>`<td class="n${sep(c)}">${c.time?hms(W[c.f]):(MONEYF[c.f]&&man?mnf(W[c.f]):nf(W[c.f]))}</td>`).join("")}
+      <td class="calc gsep">${rtc(W.visit,W.plan)}</td><td class="calc">${rtc(tot(W),W.visit)}</td>
+      <td class="calc">${rtc(W.rev,W.inRev+W.expRev)}</td>
       <td class="chk">오전 ${W.am} · 퇴근 ${W.pm}</td><td></td></tr>`;
   };
   days.forEach(d=>{
@@ -2041,15 +2112,15 @@ function renderBiz(){
     const list=all?byDate(d):byDate(d).filter(r=>r.mentor===who);
     const s=sum(list), has=list.length>0;
     const cells=BCOL.map(c=>all
-      ? `<td class="n">${fmtV(c,s[c.f])}</td>`
-      : `<td class="cell-in"><input class="ci${c.time?" tm":""}${s[c.f]?"":" z"}" type="text" inputmode="${c.time?"text":"numeric"}" data-d="${d}" data-f="${c.f}"${c.time?' data-time="1"':""} value="${s[c.f]?(c.time?hms(s[c.f]):nf(s[c.f])):""}" placeholder="${c.time?"00:00:00":"0"}"></td>`
+      ? `<td class="n${sep(c)}${bad(c,s[c.f])}">${fmtV(c,s[c.f])}</td>`
+      : `<td class="cell-in${sep(c)}${bad(c,s[c.f])}"><input class="ci${c.time?" tm":""}${s[c.f]?"":" z"}" type="text" inputmode="${c.time?"text":"numeric"}" data-d="${d}" data-f="${c.f}"${c.time?' data-time="1"':""} value="${s[c.f]?(c.time?hms(s[c.f]):nf(s[c.f])):""}" placeholder="${c.time?"00:00:00":"0"}"></td>`
     ).join("");
     rows+=`<tr data-row="${d}" class="${has?"":"off"}${d===today()?" tdy":""}">
       <td class="dt">${d.slice(5).replace("-",".")} <span class="subtle">(${dowOf(d)})</span></td>
       ${cells}
-      <td class="calc" data-rate="${d}">${rt(s.visit,s.plan)}</td>
-      <td class="calc" data-rate2="${d}">${rt(tot(s),s.visit)}</td>
-      <td class="calc" data-rate3="${d}">${rt(s.rev,s.inRev+s.expRev)}</td>
+      <td class="calc gsep" data-rate="${d}">${rtc(s.visit,s.plan)}</td>
+      <td class="calc${badCnt(tot(s))?" bad":""}" data-rate2="${d}">${rtc(tot(s),s.visit)}</td>
+      <td class="calc" data-rate3="${d}">${rtc(s.rev,s.inRev+s.expRev)}</td>
       <td class="chk">${all
         ? `<span class="cbadge${s.am?" y":""}">오전 ${s.am}</span><span class="cbadge${s.pm?" y":""}">퇴근 ${s.pm}</span>`
         : `<label class="ck2"><input type="checkbox" data-done="am" data-d="${d}"${s.am?" checked":""}>오전</label><label class="ck2"><input type="checkbox" data-done="pm" data-d="${d}"${s.pm?" checked":""}>퇴근</label>`}</td>
@@ -2060,14 +2131,15 @@ function renderBiz(){
   rows+=wkRow();
   const T=sum(all?S.reports.filter(r=>days.indexOf(r.date)>=0)
                 :S.reports.filter(r=>r.mentor===who&&days.indexOf(r.date)>=0));
-  $("#bizTable").innerHTML=`<div class="tw"><table class="t" style="min-width:${bizView==='all'?1620:1080}px">
-    <colgroup><col style="width:104px">${cols}<col style="width:66px"><col style="width:66px"><col style="width:76px"><col style="width:128px"><col style="width:68px"></colgroup>
-    <thead>${grp}<tr><th>영업일</th>${head}<th class="r">상담률</th><th class="r">등록률</th><th class="r">매출달성</th><th>작성여부</th><th>작업</th></tr></thead>
+  const minW=112+BCOL.reduce((a,c)=>a+cw(c),0)+78+78+84+128+68;
+  $("#bizTable").innerHTML=`<div class="tw"><table class="t" style="min-width:${minW}px">
+    <colgroup><col style="width:112px">${cols}<col style="width:78px"><col style="width:78px"><col style="width:84px"><col style="width:128px"><col style="width:68px"></colgroup>
+    <thead>${grp}<tr><th>영업일</th>${head}<th class="r gsep">상담률</th><th class="r">등록률</th><th class="r">매출달성</th><th class="gsep">작성여부</th><th>작업</th></tr></thead>
     <tbody>${rows}</tbody>
     <tfoot><tr><td>${ym.replace("-",".")} 합계</td>
-      ${BCOL.map(c=>`<td>${c.time?hms(T[c.f]):nf(T[c.f])}</td>`).join("")}
-      <td>${rt(T.visit,T.plan)}</td><td>${rt(tot(T),T.visit)}</td><td>${rt(T.rev,T.inRev+T.expRev)}</td>
-      <td>오전 ${T.am} · 퇴근 ${T.pm}</td><td></td></tr></tfoot>
+      ${BCOL.map(c=>`<td class="${sep(c).trim()}">${c.time?hms(T[c.f]):(MONEYF[c.f]&&man?mnf(T[c.f]):nf(T[c.f]))}</td>`).join("")}
+      <td class="gsep">${rtc(T.visit,T.plan)}</td><td>${rtc(tot(T),T.visit)}</td><td>${rtc(T.rev,T.inRev+T.expRev)}</td>
+      <td class="gsep">오전 ${T.am} · 퇴근 ${T.pm}</td><td></td></tr></tfoot>
   </table></div>`;
   bizDirty.clear();
 }
@@ -2427,6 +2499,12 @@ $("#logDay").addEventListener("click",async e=>{
   if(dl){ const [d,m]=dl.dataset.ldel.split("|"); await delReport(d,m); return; }
 });
 $("#logDate").addEventListener("change",renderLog);
+$$(".munit").forEach(el=>el.addEventListener("click",async e=>{
+  const b=e.target.closest("[data-u]"); if(!b) return;
+  S.ui.moneyUnit=b.dataset.u; Local.saveUi(S.ui); syncMunit();
+  if($("#v-log").classList.contains("on")) renderLog();
+  if($("#v-biz").classList.contains("on")) renderBiz();
+}));
 $("#logMonth").addEventListener("change",renderLog);
 $("#logGroup").addEventListener("change",renderLog);
 $("#logPrev").onclick=()=>{ $("#logDate").value=shift($("#logDate").value||today(),-1); renderLog(); };
@@ -2606,9 +2684,9 @@ async function boot(keep){
   if(!Array.isArray(S.leaders)) S.leaders=[];
   S.score=Object.assign(SC_DEF(),S.score||{});
   S.score.items=Object.assign(SC_DEF().items,S.score.items||{});
-  S.ui=Object.assign({font:"plex",digit:"mono",scale:"md",amUnit:"man",prevMode:"me",gap:true},Local.ui()||S.ui||{});
+  S.ui=Object.assign({font:"plex",digit:"mono",scale:"md",amUnit:"man",prevMode:"me",gap:true,moneyUnit:"won"},Local.ui()||S.ui||{});
   applyUI();
-  gapOn=S.ui.gap!==false; applyGapBtn();
+  gapOn=S.ui.gap!==false; applyGapBtn(); syncMunit();
   $("#wPrevMode").value=S.ui.prevMode||"me";
   const t=today();
   $("#dashDate").value=$("#dashDate").value||t;
