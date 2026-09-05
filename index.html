@@ -259,17 +259,17 @@ pre.pv{
 pre.pv::-webkit-scrollbar{width:8px} pre.pv::-webkit-scrollbar-thumb{background:#3A4149;border-radius:4px}
 
 /* ─────────────── calendar ─────────────── */
-.calwrap{display:grid;grid-template-columns:minmax(0,1fr) 306px;gap:14px;align-items:start}
+.calwrap{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:14px;align-items:start}
 .cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border-top:1px solid var(--line-2)}
 .cal .dow{
-  height:34px;display:flex;align-items:center;justify-content:center;
-  font-size:11.5px;font-weight:700;letter-spacing:.2px;color:var(--tx-2);
+  height:36px;display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:700;letter-spacing:.2px;color:var(--tx-2);
   border-bottom:1px solid var(--line);border-right:1px solid var(--line-2);background:var(--card-2)
 }
 .cal .dow:nth-child(7){border-right:0}
 .cal .dow.sun{color:var(--clay)} .cal .dow.sat{color:#3E5C86}
 .cal .cell{
-  min-height:106px;padding:0 6px 6px;border-right:1px solid var(--line-2);border-bottom:1px solid var(--line-2);
+  min-height:138px;padding:0 7px 7px;border-right:1px solid var(--line-2);border-bottom:1px solid var(--line-2);
   background:var(--card);cursor:pointer;overflow:hidden;position:relative;transition:background .12s
 }
 .cal .cell:nth-child(7n){border-right:0}
@@ -280,15 +280,17 @@ pre.pv::-webkit-scrollbar{width:8px} pre.pv::-webkit-scrollbar-thumb{background:
 .cal .cell.out{background:#F4F5F7!important} .cal .cell.out .dn{color:var(--tx-3)} .cal .cell.out .ev{opacity:.45}
 .cal .cell.nb{background:repeating-linear-gradient(135deg,#F5F6F8,#F5F6F8 6px,#EFF1F4 6px,#EFF1F4 12px)!important}
 .cal .cell.sel{box-shadow:inset 0 0 0 2px var(--ink-3);background:#EEF3F9!important}
+/* 드래그 이동 */
+.cal .cell.drop{box-shadow:inset 0 0 0 2px var(--steel);background:#E8F1FE!important}
 .cal .dn{
-  font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:12px;font-weight:600;
+  font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:12.5px;font-weight:600;
   display:flex;align-items:center;justify-content:space-between;gap:4px;
-  height:24px;margin:0 -6px 5px;padding:0 6px;border-bottom:1px solid var(--line-2)
+  height:26px;margin:0 -7px 5px;padding:0 7px;border-bottom:1px solid var(--line-2)
 }
 .cal .dn .tg{display:flex;align-items:center;gap:4px}
 .cal .cell.today .dn>span:first-child{background:var(--ink);color:#fff;border-radius:5px;padding:0 5px}
 .cal .rp{width:6px;height:6px;border-radius:50%;background:var(--teal);flex:0 0 auto}
-.cal .offtag{font-size:9.5px;font-weight:700;color:var(--tx-3);letter-spacing:.2px;font-family:var(--sans)}
+.cal .offtag{font-size:10px;font-weight:700;color:var(--tx-3);letter-spacing:.2px;font-family:var(--sans)}
 .cal.bizmode .cell{cursor:copy}
 .cal.bizmode .cell::after{
   content:"";position:absolute;right:6px;bottom:6px;width:13px;height:13px;border-radius:4px;
@@ -298,20 +300,28 @@ pre.pv::-webkit-scrollbar{width:8px} pre.pv::-webkit-scrollbar-thumb{background:
   box-shadow:inset 0 0 0 2px #fff,inset 0 0 0 3px var(--ink)}
 .calbar{display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding:10px 14px;border-bottom:1px solid var(--line-2);background:var(--card-2)}
 .ev{
-  margin-top:3px;font-size:11px;line-height:1.4;padding:2px 5px;border-radius:4px;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-left:2.5px solid
+  margin-top:3px;font-size:11.5px;line-height:1.45;padding:3px 6px;border-radius:4px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-left:2.5px solid;
+  cursor:grab;transition:filter .1s
 }
-.ev .who{opacity:.62;font-size:10px;margin-left:3px}
+.ev:hover{filter:brightness(.965)}
+.ev:active{cursor:grabbing}
+.ev.dragging{opacity:.35}
+.ev.onedit{box-shadow:inset 0 0 0 1.5px var(--ink-3)}
+.ev>b.num{opacity:.72;font-weight:600;margin-right:1px}
+.ev .who{opacity:.6;font-size:10px;margin-left:3px}
 .ev.t1{background:#EEF2F7;border-color:var(--steel);color:#2E4560}
 .ev.t2{background:#F3EDE1;border-color:var(--brass);color:#7A5E2E}
 .ev.t3{background:#E9F0ED;border-color:var(--teal);color:#215449}
 .ev.t4{background:#F1F2F4;border-color:#8A9099;color:#565C66}
 .more{margin-top:3px;font-size:10.5px;font-weight:600;color:var(--tx-3)}
 .evrow{display:flex;gap:9px;align-items:flex-start;padding:9px 0;border-bottom:1px solid var(--line-2);min-width:0}
+.evrow.editing{background:var(--brass-soft);border-radius:8px;padding:9px 8px;margin:0 -8px}
 .evrow .tm{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:12.5px;color:var(--tx-2);width:42px;flex:0 0 auto;padding-top:1px}
 .evrow .bdy{min-width:0;flex:1 1 auto}
-.evrow .tt{font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.evrow .mt{font-size:11.5px;color:var(--tx-3);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.evrow .tt{display:block;font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.evrow .mt{display:block;font-size:11.5px;color:var(--tx-3);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.evrow .acts{display:flex;gap:2px;flex:0 0 auto}
 .tag{display:inline-block;font-size:11px;font-weight:600;letter-spacing:0;padding:1px 6px;border-radius:4px;margin-right:5px}
 .tag.t1{background:#EEF2F7;color:#2E4560} .tag.t2{background:#F3EDE1;color:#7A5E2E}
 .tag.t3{background:#E9F0ED;color:#215449} .tag.t4{background:#F1F2F4;color:#565C66}
@@ -924,6 +934,7 @@ table.mxt tfoot td.mx{font-variant-numeric:tabular-nums;font-size:12.5px}
             <span class="eyebrow" style="margin-right:2px">담당</span>
             <div class="pillbar" id="calWho"></div>
             <div class="sp" style="flex:1"></div>
+            <span class="subtle">일정을 끌어 날짜를 옮기고, 클릭하면 수정됩니다</span>
             <button class="btn sm gh" id="calMtEdit">멘토 편집</button>
           </div>
           <div class="calbar" id="calBizBar" hidden>
@@ -952,19 +963,24 @@ table.mxt tfoot td.mx{font-variant-numeric:tabular-nums;font-size:12.5px}
         </div>
 
         <div class="card">
-          <div class="hd"><h2 id="evTitle">일정</h2></div>
+          <div class="hd"><h2 id="evTitle">일정</h2><div class="sp"></div>
+            <span class="eyebrow" id="evMode" hidden>수정 중</span></div>
           <div class="bd">
             <div class="fg c2" style="gap:10px">
+              <div class="fld"><label for="evDate">날짜</label><input type="date" id="evDate" class="f"></div>
+              <div class="fld"><label for="evTime">시간</label><input type="time" id="evTime" class="f"></div>
               <div class="fld"><label for="evType">유형</label>
                 <select id="evType" class="f">
                   <option value="1">상담예정</option><option value="2">면담</option>
                   <option value="3">수업 · 특강</option><option value="4">기타</option>
                 </select></div>
-              <div class="fld"><label for="evTime">시간</label><input type="time" id="evTime" class="f"></div>
+              <div class="fld"><label for="evMentor">담당</label><select id="evMentor" class="f"></select></div>
               <div class="fld spanall"><label for="evTitleIn">내용 · 대상</label><input type="text" id="evTitleIn" class="f" placeholder="예) 김OO 학부모 면담"></div>
-              <div class="fld spanall"><label for="evMentor">담당</label><select id="evMentor" class="f"></select></div>
             </div>
-            <button class="btn pri" id="evAdd" style="width:100%;margin-top:12px">일정 추가</button>
+            <div style="display:flex;gap:8px;margin-top:12px">
+              <button class="btn pri" id="evAdd" style="flex:1 1 auto">일정 추가</button>
+              <button class="btn gh" id="evCancel" hidden>취소</button>
+            </div>
             <div style="margin-top:16px" id="evList"></div>
           </div>
         </div>
@@ -1324,6 +1340,7 @@ async function save(){ Local.save(S); Local.saveUi(S.ui); await Cloud.push(); re
 let S={ reports:[], events:[], mentors:["김태욱","최봉경","김민영","조용준","최병훈"], me:"", roles:{}, biz:{}, accounts:{}, leaders:[],
         score:null, ui:{font:"pretendard",digit:"mono",scale:"md"} };
 let dashDays=10, calCursor=null, calSel=null, logMonthVal="", chartRev=null, chartFn=null, chartMt=null;
+let evEdit=null, evDrag=null;
 
 /* ══════════════════ util ══════════════════ */
 const $=(s,r)=>(r||document).querySelector(s), $$=(s,r)=>[...(r||document).querySelectorAll(s)];
@@ -2226,10 +2243,10 @@ function renderCal(){
     const evs=S.events.filter(e=>e.date===ds&&calHit(e.mentor)).sort((a,b)=>(a.time||"").localeCompare(b.time||""));
     const hasRep=S.reports.some(r=>r.date===ds&&calHit(r.mentor));
     const biz=isBiz(ds);
-    const show=evs.slice(0,3), rest=evs.length-show.length;
+    const show=evs.slice(0,4), rest=evs.length-show.length;
     h+=`<div class="cell${out?" out":""}${biz?" biz":" nb"}${ds===today()?" today":""}${ds===calSel?" sel":""}" data-d="${ds}">
       <div class="dn"><span>${dt.getDate()}</span><span class="tg">${biz?"":'<em class="offtag">휴무</em>'}${hasRep?'<i class="rp" title="보고 제출됨"></i>':""}</span></div>
-      ${show.map(e=>`<div class="ev t${e.type}" title="${esc((e.time?e.time+" ":"")+e.title+(e.mentor?" · "+e.mentor:""))}">${e.time?`<b class="num">${esc(e.time)}</b> `:""}${esc(e.title)}${e.mentor&&calWho==="__ALL__"?`<span class="who">${esc(e.mentor)}</span>`:""}</div>`).join("")}
+      ${show.map(e=>`<div class="ev t${e.type}${e.id===evEdit?" onedit":""}" draggable="${calBiz?"false":"true"}" data-evc="${esc(e.id)}" title="${esc((e.time?e.time+" ":"")+e.title+(e.mentor?" · "+e.mentor:""))} — 끌어서 날짜 이동 · 클릭해서 수정">${e.time?`<b class="num">${esc(e.time)}</b> `:""}${esc(e.title)}${e.mentor&&calWho==="__ALL__"?`<span class="who">${esc(e.mentor)}</span>`:""}</div>`).join("")}
       ${rest>0?`<div class="more">+${rest}</div>`:""}
     </div>`;
   }
@@ -2245,15 +2262,57 @@ async function calSetBiz(ym,list){
 function renderEvList(){
   const d=calSel||today();
   $("#evTitle").textContent=kdate(d)+" 일정"+(calWho==="__ALL__"?"":` · ${calWho}`);
+  if(!evEdit && $("#evDate")) $("#evDate").value=d;
   const evs=S.events.filter(e=>e.date===d&&calHit(e.mentor)).sort((a,b)=>(a.time||"99").localeCompare(b.time||"99"));
   const rep=byDate(d).filter(r=>calHit(r.mentor));
-  $("#evList").innerHTML=(evs.length?evs.map(e=>`<div class="evrow">
+  $("#evList").innerHTML=(evs.length?evs.map(e=>`<div class="evrow${e.id===evEdit?" editing":""}">
       <span class="tm">${esc(e.time||"—")}</span>
       <span class="bdy"><span class="tt"><span class="tag t${e.type}">${EVN[e.type]}</span>${esc(e.title)}</span>
       <span class="mt">${esc(e.mentor||"담당 미지정")}</span></span>
-      <button class="btn sm gh dgr" data-ev="${e.id}">삭제</button></div>`).join("")
+      <span class="acts">
+        <button class="ib" data-evedit="${e.id}" title="수정" aria-label="일정 수정">✎</button>
+        <button class="ib dgr" data-ev="${e.id}" title="삭제" aria-label="일정 삭제">✕</button>
+      </span></div>`).join("")
     :`<div class="empty" style="padding:22px 8px"><b>일정 없음</b>위에서 상담·면담 일정을 추가하세요.</div>`)
     +(rep.length?`<div class="warnbox" style="margin-top:14px">이 날짜 보고 제출 ${rep.length}건 · ${rep.map(r=>esc(r.mentor)).join(", ")}</div>`:"");
+}
+/* ── 일정 수정 상태 ── */
+function startEvEdit(id){
+  const e=S.events.find(x=>x.id===id); if(!e) return;
+  evEdit=id;
+  calSel=e.date;
+  const dt=parse(e.date);
+  if(!calCursor||dt.getMonth()!==calCursor.getMonth()||dt.getFullYear()!==calCursor.getFullYear())
+    calCursor=new Date(dt.getFullYear(),dt.getMonth(),1);
+  $("#evDate").value=e.date;
+  $("#evTime").value=e.time||"";
+  $("#evType").value=String(e.type||"1");
+  $("#evTitleIn").value=e.title||"";
+  const ms=$("#evMentor");
+  if(ms&&[...ms.options].some(o=>o.value===(e.mentor||""))) ms.value=e.mentor||"";
+  $("#evAdd").textContent="수정 저장";
+  $("#evCancel").hidden=false;
+  $("#evMode").hidden=false;
+  renderCal();
+  $("#evTitleIn").focus();
+}
+function endEvEdit(clear){
+  evEdit=null;
+  $("#evAdd").textContent="일정 추가";
+  $("#evCancel").hidden=true;
+  $("#evMode").hidden=true;
+  if(clear!==false){ $("#evTitleIn").value=""; $("#evTime").value=""; }
+  $("#evDate").value=calSel||today();
+}
+/* 일정을 다른 날짜로 이동 (드래그 드롭) */
+async function moveEvent(id,ds){
+  const e=S.events.find(x=>x.id===id);
+  if(!e||e.date===ds) return;
+  const from=e.date;
+  e.date=ds;
+  calSel=ds;
+  await save(); renderCal();
+  toast(`${from.slice(5).replace("-",".")} → ${ds.slice(5).replace("-",".")} 로 옮겼습니다`);
 }
 
 /* ══════════════════ 월간 입력표 (영업일) ══════════════════ */
@@ -2756,20 +2815,95 @@ $("#calGrid").addEventListener("click",async e=>{
     await calSetBiz(ym,cur.indexOf(ds)>=0?cur.filter(x=>x!==ds):cur.concat([ds]));
     return;
   }
+  /* 일정 블록을 누르면 바로 수정 모드 */
+  const ev=e.target.closest("[data-evc]");
+  if(ev){ startEvEdit(ev.dataset.evc); return; }
   calSel=c.dataset.d;
+  if(evEdit) endEvEdit();
   const d=parse(calSel);
   if(d.getMonth()!==calCursor.getMonth()) calCursor=new Date(d.getFullYear(),d.getMonth(),1);
   renderCal();
 });
+/* ── 드래그로 일정 날짜 이동 ── */
+$("#calGrid").addEventListener("dragstart",e=>{
+  const ev=e.target.closest("[data-evc]");
+  if(!ev||calBiz){ e.preventDefault(); return; }
+  evDrag=ev.dataset.evc;
+  ev.classList.add("dragging");
+  try{ e.dataTransfer.effectAllowed="move"; e.dataTransfer.setData("text/plain",evDrag); }catch(_){}
+});
+$("#calGrid").addEventListener("dragend",e=>{
+  evDrag=null;
+  $$("#calGrid .ev.dragging").forEach(x=>x.classList.remove("dragging"));
+  $$("#calGrid .cell.drop").forEach(x=>x.classList.remove("drop"));
+});
+$("#calGrid").addEventListener("dragover",e=>{
+  if(!evDrag) return;
+  const c=e.target.closest(".cell"); if(!c) return;
+  e.preventDefault();
+  try{ e.dataTransfer.dropEffect="move"; }catch(_){}
+  if(!c.classList.contains("drop")){
+    $$("#calGrid .cell.drop").forEach(x=>x.classList.remove("drop"));
+    c.classList.add("drop");
+  }
+});
+$("#calGrid").addEventListener("dragleave",e=>{
+  const c=e.target.closest(".cell");
+  if(c&&!c.contains(e.relatedTarget)) c.classList.remove("drop");
+});
+$("#calGrid").addEventListener("drop",async e=>{
+  const c=e.target.closest(".cell"); if(!c) return;
+  e.preventDefault();
+  const id=evDrag||(()=>{try{return e.dataTransfer.getData("text/plain");}catch(_){return"";}})();
+  $$("#calGrid .cell.drop").forEach(x=>x.classList.remove("drop"));
+  evDrag=null;
+  if(id) await moveEvent(id,c.dataset.d);
+});
 $("#evAdd").onclick=async()=>{
   const t=$("#evTitleIn").value.trim();
   if(!t){ toast("일정 내용을 입력하세요"); return; }
+  const d=$("#evDate").value||calSel||today();
+  if(evEdit){
+    const e=S.events.find(x=>x.id===evEdit);
+    if(!e){ endEvEdit(); toast("일정을 찾을 수 없습니다"); renderCal(); return; }
+    Object.assign(e,{date:d,type:$("#evType").value,time:$("#evTime").value,title:t,mentor:$("#evMentor").value});
+    calSel=d;
+    const dt=parse(d);
+    if(dt.getMonth()!==calCursor.getMonth()||dt.getFullYear()!==calCursor.getFullYear())
+      calCursor=new Date(dt.getFullYear(),dt.getMonth(),1);
+    endEvEdit();
+    await save(); renderCal(); toast("일정을 수정했습니다");
+    return;
+  }
   S.events.push({id:"e"+Date.now()+Math.random().toString(36).slice(2,6),
-    date:calSel||today(),type:$("#evType").value,time:$("#evTime").value,title:t,mentor:$("#evMentor").value});
+    date:d,type:$("#evType").value,time:$("#evTime").value,title:t,mentor:$("#evMentor").value});
+  calSel=d;
+  const dt=parse(d);
+  if(calCursor&&(dt.getMonth()!==calCursor.getMonth()||dt.getFullYear()!==calCursor.getFullYear()))
+    calCursor=new Date(dt.getFullYear(),dt.getMonth(),1);
   await save(); $("#evTitleIn").value=""; renderCal(); toast("일정이 추가되었습니다");
 };
+$("#evCancel").onclick=()=>{ endEvEdit(); renderCal(); };
+$("#evDate").addEventListener("change",e=>{
+  if(evEdit) return;
+  const v=e.target.value; if(!v) return;
+  calSel=v;
+  const dt=parse(v);
+  if(!calCursor||dt.getMonth()!==calCursor.getMonth()||dt.getFullYear()!==calCursor.getFullYear())
+    calCursor=new Date(dt.getFullYear(),dt.getMonth(),1);
+  renderCal();
+});
+$("#evTitleIn").addEventListener("keydown",e=>{
+  if(e.key==="Enter"){ e.preventDefault(); $("#evAdd").click(); }
+  if(e.key==="Escape"&&evEdit){ endEvEdit(); renderCal(); }
+});
 $("#evList").addEventListener("click",async e=>{
+  const ed=e.target.closest("[data-evedit]");
+  if(ed){ startEvEdit(ed.dataset.evedit); return; }
   const b=e.target.closest("[data-ev]"); if(!b) return;
+  const ev=S.events.find(x=>x.id===b.dataset.ev);
+  if(!confirm(`「${ev?ev.title:"이 일정"}」을(를) 삭제할까요?`)) return;
+  if(evEdit===b.dataset.ev) endEvEdit();
   S.events=S.events.filter(x=>x.id!==b.dataset.ev); await save(); renderCal(); toast("일정을 삭제했습니다");
 });
 
@@ -2915,6 +3049,7 @@ async function boot(keep){
   $("#logDate").value=t; $("#logMonth").value=t.slice(0,7);
   $("#bizMonth").value=$("#bizMonth").value||t.slice(0,7);
   calSel=calSel||t; calCursor=calCursor||new Date();
+  $("#evDate").value=$("#evDate").value||calSel;
   calWho=S.ui.calWho||"__ALL__";
   syncMentorSelects(); loadForm(); renderDash(); renderSet();
   if(!keep){
